@@ -20,7 +20,7 @@ export default function HomeScreen({
     <View style={styles.container}>
       <Text style={styles.logo}>😊</Text>
 
-      <Text style={styles.title}>Hourly Happiness</Text>
+      <Text style={styles.title}>Notify Hourly Happiness</Text>
 
       <Text style={styles.subtitle}>{selectedCount} activities selected</Text>
 

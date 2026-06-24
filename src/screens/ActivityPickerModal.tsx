@@ -1,83 +1,152 @@
-import React from "react";
+import React, { useState } from "react";
 import {
-  Modal,
-  View,
-  Text,
   FlatList,
+  Modal,
   Pressable,
   StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
+
 import { HOURLY_ITEMS } from "../data/hourlyContent";
+import { SelectedActivity } from "../types/SelectedActivity";
 
 type Props = {
   visible: boolean;
-  selectedIndices: Set<number>;
-  onToggle: (index: number) => void;
-  onSelectAll: () => void;
-  onClearAll: () => void;
+  activities: SelectedActivity[];
+
+  onAddActivity: (index: number, intervalMinutes: number) => void;
+
+  onRemoveActivity: (index: number) => void;
+
   onClose: () => void;
 };
 
 export default function ActivityPickerModal({
   visible,
-  selectedIndices,
-  onToggle,
-  onSelectAll,
-  onClearAll,
+  activities,
+  onAddActivity,
+  onRemoveActivity,
   onClose,
 }: Props) {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  const [intervalText, setIntervalText] = useState("60");
+
+  const isSelected = (index: number) =>
+    activities.some((x) => x.index === index);
+
+  const getInterval = (index: number) =>
+    activities.find((x) => x.index === index)?.intervalMinutes;
+
+  const handlePressActivity = (index: number) => {
+    if (isSelected(index)) {
+      onRemoveActivity(index);
+      return;
+    }
+
+    setSelectedIndex(index);
+    setIntervalText("60");
+  };
+
+  const handleSaveInterval = () => {
+    if (selectedIndex === null) {
+      return;
+    }
+
+    const interval = Number(intervalText);
+
+    if (Number.isNaN(interval) || interval <= 0) {
+      return;
+    }
+
+    onAddActivity(selectedIndex, interval);
+
+    setSelectedIndex(null);
+  };
+
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-    >
-      <View style={styles.container}>
-        <Text style={styles.title}>Choose Activities</Text>
+    <>
+      <Modal visible={visible} animationType="slide">
+        <View style={styles.container}>
+          <Text style={styles.title}>Choose Activities</Text>
 
-        <View style={styles.actions}>
-          <Pressable style={styles.smallButton} onPress={onSelectAll}>
-            <Text style={styles.smallButtonText}>Select All</Text>
-          </Pressable>
+          <FlatList
+            data={HOURLY_ITEMS}
+            keyExtractor={(_, index) => index.toString()}
+            renderItem={({ item, index }) => {
+              const selected = isSelected(index);
 
-          <Pressable style={styles.smallButton} onPress={onClearAll}>
-            <Text style={styles.smallButtonText}>Clear</Text>
+              return (
+                <Pressable
+                  style={[styles.row, selected && styles.selectedRow]}
+                  onPress={() => handlePressActivity(index)}
+                >
+                  <Text style={styles.activity}>{item.activity}</Text>
+
+                  {selected && (
+                    <Text style={styles.interval}>
+                      Every {getInterval(index)} min
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            }}
+          />
+
+          <Pressable style={styles.doneButton} onPress={onClose}>
+            <Text style={styles.doneButtonText}>Done</Text>
           </Pressable>
         </View>
+      </Modal>
 
-        <FlatList
-          data={HOURLY_ITEMS}
-          keyExtractor={(_, index) => index.toString()}
-          renderItem={({ item, index }) => {
-            const selected = selectedIndices.has(index);
+      <Modal visible={selectedIndex !== null} transparent animationType="fade">
+        <View style={styles.overlay}>
+          <View style={styles.dialog}>
+            <Text style={styles.dialogTitle}>Reminder Interval</Text>
 
-            return (
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={intervalText}
+              onChangeText={setIntervalText}
+              placeholder="Minutes"
+            />
+
+            <Text style={styles.helpText}>Example: 15, 30, 60</Text>
+
+            <View style={styles.dialogButtons}>
               <Pressable
-                style={[styles.row, selected && styles.selectedRow]}
-                onPress={() => onToggle(index)}
+                style={styles.cancelButton}
+                onPress={() => setSelectedIndex(null)}
               >
-                <Text style={styles.check}>{selected ? "✓" : "○"}</Text>
-
-                <Text style={styles.activity}>{item.activity}</Text>
+                <Text>Cancel</Text>
               </Pressable>
-            );
-          }}
-        />
 
-        <Pressable style={styles.doneButton} onPress={onClose}>
-          <Text style={styles.doneButtonText}>Done</Text>
-        </Pressable>
-      </View>
-    </Modal>
+              <Pressable style={styles.saveButton} onPress={handleSaveInterval}>
+                <Text
+                  style={{
+                    color: "#fff",
+                  }}
+                >
+                  Save
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#1a1a2e",
     paddingTop: 60,
     paddingHorizontal: 20,
-    backgroundColor: "#1a1a2e",
   },
 
   title: {
@@ -87,27 +156,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  actions: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
-
-  smallButton: {
-    backgroundColor: "#334155",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-
-  smallButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-
   row: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "#16213e",
     padding: 16,
     borderRadius: 12,
@@ -119,22 +168,21 @@ const styles = StyleSheet.create({
     borderColor: "#f97316",
   },
 
-  check: {
-    color: "#f97316",
-    fontSize: 22,
-    width: 32,
-  },
-
   activity: {
     color: "#fff",
     fontSize: 16,
-    flex: 1,
+    fontWeight: "600",
+  },
+
+  interval: {
+    color: "#f97316",
+    marginTop: 4,
   },
 
   doneButton: {
     backgroundColor: "#f97316",
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 12,
     marginVertical: 20,
     alignItems: "center",
   },
@@ -142,6 +190,55 @@ const styles = StyleSheet.create({
   doneButtonText: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 16,
+  },
+
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+
+  dialog: {
+    width: "85%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+  },
+
+  dialogTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 15,
+  },
+
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 12,
+  },
+
+  helpText: {
+    marginTop: 8,
+    color: "#666",
+  },
+
+  dialogButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 20,
+  },
+
+  cancelButton: {
+    marginRight: 10,
+    padding: 10,
+  },
+
+  saveButton: {
+    backgroundColor: "#f97316",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
 });

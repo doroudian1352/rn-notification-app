@@ -109,3 +109,43 @@ export async function getScheduledCount(): Promise<number> {
   info(`getScheduledCount -> ${pending.length}`);
   return pending.length;
 }
+
+export async function scheduleActivityNotifications(
+  index: number,
+  intervalMinutes: number,
+): Promise<string[]> {
+  const item = HOURLY_ITEMS[index];
+
+  const ids: string[] = [];
+
+  const now = Date.now();
+
+  for (
+    let minutes = intervalMinutes;
+    minutes <= 24 * 60;
+    minutes += intervalMinutes
+  ) {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: item.slogan,
+        body: item.activity,
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(now + minutes * 60 * 1000),
+        channelId: "hourly-happiness",
+      },
+    });
+
+    ids.push(id);
+  }
+
+  return ids;
+}
+
+export async function cancelActivityNotifications(notificationIds: string[]) {
+  for (const id of notificationIds) {
+    await Notifications.cancelScheduledNotificationAsync(id);
+  }
+}

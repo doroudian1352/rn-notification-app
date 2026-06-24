@@ -16,6 +16,7 @@ export function configureNotificationHandler(): void {
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
+  info("Requesting notification permissions");
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("hourly-happiness", {
       name: "Hourly happiness",
