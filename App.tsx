@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import HomeScreen from "./src/screens/HomeScreen";
 import ActivityPickerModal from "./src/screens/ActivityPickerModal";
 
+import { HOURLY_ITEMS } from "./src/data/hourlyContent";
 import { SelectedActivity } from "./src/types/SelectedActivity";
 import {
   scheduleActivityNotifications,
@@ -31,28 +32,57 @@ export default function App() {
 
   const [activities, setActivities] = useState<SelectedActivity[]>([]);
 
-  const addActivity = async (index: number, intervalMinutes: number) => {
-    info("Adding activity");
-    const ids = await scheduleActivityNotifications(index, intervalMinutes);
+  useEffect(() => {
+    console.log("activities changed", activities);
+  }, [activities]);
 
-    setActivities((prev) => [
-      ...prev.filter((x) => x.index !== index),
-      {
-        index,
-        intervalMinutes,
-        notificationIds: ids,
-      },
-    ]);
+  const selectedDisplay = activities.map((a) => {
+    const item = HOURLY_ITEMS[a.index];
+    return {
+      index: a.index,
+      slogan: item.slogan,
+      activity: item.activity,
+      intervalMinutes: a.intervalMinutes,
+    };
+  });
+
+  const addActivity = async (index: number, intervalMinutes: number) => {
+    try {
+      info("Adding activity New");
+
+      const ids = await scheduleActivityNotifications(index, intervalMinutes);
+
+      info(`scheduleActivityNotifications returned ${ids.length}`);
+
+      setActivities((prev) => [
+        ...prev.filter((x) => x.index !== index),
+        {
+          index,
+          intervalMinutes,
+          notificationIds: ids,
+        },
+      ]);
+
+      info("setActivities called");
+    } catch (error) {
+      console.error("addActivity failed", error);
+    }
   };
 
   const removeActivity = async (index: number) => {
-    const activity = activities.find((x) => x.index === index);
+    info("Removing activity", { index });
 
-    if (activity) {
-      await cancelActivityNotifications(activity.notificationIds);
+    let notificationIds: string[] | undefined;
+
+    setActivities((prev) => {
+      const activity = prev.find((x) => x.index === index);
+      notificationIds = activity?.notificationIds;
+      return prev.filter((x) => x.index !== index);
+    });
+
+    if (notificationIds?.length) {
+      await cancelActivityNotifications(notificationIds);
     }
-
-    setActivities((prev) => prev.filter((x) => x.index !== index));
   };
 
   return (
@@ -61,10 +91,11 @@ export default function App() {
 
       <HomeScreen
         enabled={false}
-        selectedCount={activities.length}
+        selected={selectedDisplay}
         statusMessage=""
         onChooseActivities={() => setShowPicker(true)}
         onToggleNotifications={() => {}}
+        onRemoveActivity={removeActivity}
       />
 
       <ActivityPickerModal

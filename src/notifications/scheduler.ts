@@ -4,7 +4,7 @@ import { step, info, warn } from "../logger";
 
 const HOURS_AHEAD = 24;
 const MS_PER_HOUR = 60 * 60 * 1000;
-
+const TEST_MODE = true;
 function resolveItems(selectedIndices?: number[]): HourlyItem[] {
   if (!selectedIndices || selectedIndices.length === 0) {
     return HOURLY_ITEMS;
@@ -117,12 +117,15 @@ export async function scheduleActivityNotifications(
   const item = HOURLY_ITEMS[index];
 
   const ids: string[] = [];
-
+  console.log("====================================");
+  console.log("Start Register Notification");
+  console.log("====================================");
   const now = Date.now();
+  const maxMinutes = TEST_MODE || intervalMinutes < 5 ? 5 : 24 * 60;
 
   for (
     let minutes = intervalMinutes;
-    minutes <= 24 * 60;
+    minutes <= maxMinutes;
     minutes += intervalMinutes
   ) {
     const id = await Notifications.scheduleNotificationAsync({
@@ -137,7 +140,7 @@ export async function scheduleActivityNotifications(
         channelId: "hourly-happiness",
       },
     });
-
+    info("Scheduled activity notification Id: " + id);
     ids.push(id);
   }
 
@@ -145,6 +148,7 @@ export async function scheduleActivityNotifications(
 }
 
 export async function cancelActivityNotifications(notificationIds: string[]) {
+  info("Remove NotificationIds: " + notificationIds);
   for (const id of notificationIds) {
     await Notifications.cancelScheduledNotificationAsync(id);
   }
